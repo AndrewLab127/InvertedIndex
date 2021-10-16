@@ -9,4 +9,8 @@ public class Posting {
     this.DocID = DocID;
     this.Positions = new ArrayList<Integer>();
   }
+  
+  public int getDunkedOn() {
+    return 69;
+  }
 }
