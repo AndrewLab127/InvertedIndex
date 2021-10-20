@@ -1,16 +1,37 @@
 import java.util.ArrayList;
 import java.util.List;
 
-public class Posting {
-  public int DocID;
-  public List<Integer> Positions;
+/*
+public class PostingList {
   
-  public Posting(int DocID) {
-    this.DocID = DocID;
-    this.Positions = new ArrayList<Integer>();
+  public class Posting {
+    public int DocId;
+    public List<Integer> Positions;
+    
+    public Posting(int DocId) {
+      this.DocId = DocId;
+      this.Positions = new ArrayList<Integer>();
+    }
   }
   
-  public int getDunkedOn() {
-    return 69;
+  public List<Posting> postings;
+  
+  public PostingList() {
+    
+    this.postings = new ArrayList<Posting>();
+  }
+  
+}
+*/
+
+public class Posting {
+  public int DocId;
+  public int freq;
+  public List<Integer> Positions;
+  
+  public Posting(int DocId) {
+    this.DocId = DocId;
+    this.freq = 0;
+    this.Positions = new ArrayList<Integer>();
   }
 }
