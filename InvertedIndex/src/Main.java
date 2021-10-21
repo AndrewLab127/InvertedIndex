@@ -67,7 +67,7 @@ public class Main {
           map.put(str, new ArrayList<Posting>()); //add it to the map
         }
         
-        List<Posting> postings = map.get(str);
+        List<Posting> postings = map.get(str); //invertedList[token]
         
         if(!containsDoc(docId, postings)) { // if the current string's postings doesn't already contain a doc with the docId
           postings.add(new Posting(docId)); //add it
@@ -75,7 +75,7 @@ public class Main {
         
         Posting p = getByDocId(docId, postings); //get the string's posting by docId
         p.Positions.add(pos); //add position to it
-        p.freq++;
+        p.freq++; //increase frequency of term in doc
       }
     }
     
@@ -187,6 +187,7 @@ public class Main {
     //List<String> newScenes = new ArrayList<String>();
     Set<String> newScenes = new HashSet<String>();
     
+    @SuppressWarnings("unchecked")
     Iterator<JSONObject> iter = corpus.iterator();
     JSONObject doc = null;
     
@@ -249,10 +250,16 @@ public class Main {
     Set<String> intersection = new HashSet<String>(poors); //finding the intersection between them
     intersection.retainAll(yoricks);
 
-    for(String scene : intersection) {
-      JSONObject doc = findJSONByScene(scene, corpus);
-      for(Posting p : map.get("poor")) {
-        
+    for(Posting p : map.get("poor")) {
+      for(Posting k : map.get("yorick")) {
+        if(p.DocId == k.DocId) { 
+          for(Integer i : p.Positions) {
+            if(k.Positions.contains(i+1)) {
+              sceneNum = p.DocId;
+              newScenes.add(scenes.get((int) (sceneNum)));
+            }
+          }
+        }
       }
     }
     
@@ -342,15 +349,11 @@ public class Main {
     //Terms3
     writeListToFile(new File("terms3.txt"), sortSet(term3(map, corpus)));
     
-    writeCollectionToFile(new File("map.txt"), map);
+    //Phrase0
+    writeListToFile(new File("phrase0.txt"), sortSet(phrase0(map, corpus, scenes)));
     
-//    for(Map.Entry<String, List<Posting>> e : map.entrySet()) {
-//      System.out.print(e.getKey());
-//      for(Posting p : e.getValue()) {
-//        System.out.println(" [" + p.DocId + ": Positions " + p.Positions + "] Frequency:" + p.freq);
-//      }
-//      System.out.println();
-//    }
+    //Write entire map to file
+    writeCollectionToFile(new File("map.txt"), map);
     
   }
 }
