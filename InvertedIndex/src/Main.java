@@ -5,18 +5,21 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.json.simple.*;
 import org.json.simple.parser.*;
 
 public class Main { 
   
-  public static boolean containsDoc(int docId, List<Posting> postings) {
+  public static boolean containsDoc(long docId, List<Posting> postings) {
     for(Posting p : postings) {
       if(p.DocId == docId) {
         return true;
@@ -25,7 +28,7 @@ public class Main {
     return false;
   }
   
-  public static Posting getByDocId(int docId, List<Posting> postings) {
+  public static Posting getByDocId(long docId, List<Posting> postings) {
     for(Posting p : postings) {
       if(p.DocId == docId) {
         return p;
@@ -35,19 +38,24 @@ public class Main {
   }
   
   @SuppressWarnings("unchecked")
-  public static Map<String, List<Posting>> indexJsons(JSONArray jsons, List<String> docs) {//jsons the list of docs, docs the list of docs and their id's
+  public static Map<String, List<Posting>> indexJsons(JSONArray jsons, List<String> scenes, List<String> plays) {//jsons the list of scenes, scenes the list of scenes and their id's
     Map<String, List<Posting>> map = new HashMap<String, List<Posting>>();
     
-    int docId = 0;
+    long docId = 0;
     int pos;
     
     Iterator<JSONObject> iter = jsons.iterator(); //given collection C
     while(iter.hasNext()) { //while C has more objects
-      docId++;
+//      docId++;
       
       JSONObject j = iter.next(); //j = next JSONObject
+      docId = (long)j.get("sceneNum");
       
-      docs.add(j.get("sceneId").toString()); 
+      scenes.add(j.get("sceneId").toString()); 
+      
+      if(!plays.contains(j.get("playId").toString())) {
+        plays.add(j.get("playId").toString());
+      }
       
       String[] tokens = j.get("text").toString().split("\\s+"); //parse(d)
       pos = 0;
@@ -103,22 +111,137 @@ public class Main {
     
   }
   
-  //terms0.txt Find scene(s) where the words thee or thou are used more frequently than the word you
-  public static List<String> term0(Map<String, List<Posting>> map, List<String> docs) {
-    List<String> scenes = new ArrayList<String>();
+  public static int getCountBySceneId(String word, long sceneNum, Map<String, List<Posting>> map) {
+    for(Posting p : map.get(word)) {
+      if(p.DocId == sceneNum) {
+        return p.freq;
+      }
+    }
+    return 0; //docId not found
+  }
+  
+  public static String getPlayIdBySceneNum(long sceneNum, JSONArray corpus) {
+    Iterator<JSONObject> iter = corpus.iterator();
+    JSONObject doc = null;
     
-    for(String doc : docs) { //for every scene in the collection
-      //if word in
+    while(iter.hasNext()) {
+      doc = iter.next();
+      
+      if((long)doc.get("sceneNum") == sceneNum) {
+        return doc.get("playId").toString();
+      }
+    }
+    return null; //if playId is not found
+  }
+  
+  public static boolean arrContains(String word, String[] arr) {
+    for(String str : arr) {
+      if(str.equals(word)) return true;
+    }
+    return false;
+  }
+  
+  public static Set<String> findScenesByTerm(String term, Map<String, List<Posting>> map, JSONArray corpus, List<String> scenes) {
+    Set<String> newScenes = new HashSet<String>();
+    
+    long sceneNum;
+    
+    for(Posting p : map.get(term)) {
+      sceneNum = p.DocId;
+      newScenes.add(scenes.get((int) sceneNum));
     }
     
-    return scenes;
+    return newScenes;
   }
   
-  public static void term1(Map<String, List<Posting>> map) {
+  public static Set<String> findPlaysByTerm(String term, Map<String, List<Posting>> map, JSONArray corpus) {
+    Set<String> newPlays = new HashSet<String>();
     
+    long sceneNum;
+    
+    for(Posting p : map.get(term)) {
+      sceneNum = p.DocId;
+      newPlays.add(getPlayIdBySceneNum(sceneNum, corpus));
+    }
+    
+    return newPlays;
   }
   
-  public static void writeToFile(File f, Map<String, List<Posting>> map) throws IOException {
+  //terms0.txt Find scene(s) where the words thee or thou are used more frequently than the word you
+  public static Set<String> term0(Map<String, List<Posting>> map, JSONArray corpus, List<String> scenes) {
+    //List<String> newScenes = new ArrayList<String>();
+    Set<String> newScenes = new HashSet<String>();
+    
+    Iterator<JSONObject> iter = corpus.iterator();
+    JSONObject doc = null;
+    
+    int theeCount = 0;
+    int thouCount = 0;
+    int youCount = 0;
+    long sceneNum = 0;
+    
+    while(iter.hasNext()) {
+      doc = iter.next();
+      sceneNum = (long)doc.get("sceneNum");
+      
+      theeCount = getCountBySceneId("thee", sceneNum, map);
+      thouCount = getCountBySceneId("thou", sceneNum, map);
+      youCount = getCountBySceneId("you", sceneNum, map);
+      
+      if(theeCount > youCount || thouCount > youCount) {
+        newScenes.add(scenes.get((int)sceneNum));
+      }
+    }
+    
+    return newScenes;
+  }
+  
+  //terms1.txt Find scene(s) where the place names venice, rome, or denmark are mentioned.
+  public static Set<String> term1(Map<String, List<Posting>> map, JSONArray corpus, List<String> scenes) {
+    //List<String> newScenes = new ArrayList<String>();
+    Set<String> newScenes;
+    
+    Set<String> veniceScenes = findScenesByTerm("venice", map, corpus, scenes);
+    Set<String> romeScenes = findScenesByTerm("rome", map, corpus, scenes);
+    Set<String> denmarkScenes = findScenesByTerm("denmark", map, corpus, scenes);
+    
+    newScenes = new HashSet<String>(veniceScenes);
+    newScenes.addAll(romeScenes);
+    newScenes.addAll(denmarkScenes);
+    
+    return newScenes;
+  }
+  
+  //terms2.txt Find the play(s) where the name goneril is mentioned.
+  public static Set<String> term2(Map<String, List<Posting>> map, JSONArray corpus) {
+    return findPlaysByTerm("goneril", map, corpus);
+  }
+  
+  //terms3.txt Find the play(s) where the word soldier is mentioned
+  public static Set<String> term3(Map<String, List<Posting>> map, JSONArray corpus) {
+    return findPlaysByTerm("soldier", map, corpus);
+  }
+  
+  //phrase0.txt Find scene(s) where "poor yorick" is mentioned.
+  public static Set<String> phrase0(Map<String, List<Posting>> map, JSONArray corpus, List<String> scenes) {
+    Set<String> newScenes = new HashSet<String>();
+    
+    long sceneNum;
+    
+    Set<String> poors = findScenesByTerm("poor", map, corpus, scenes);
+    Set<String> yoricks = findScenesByTerm("yorick", map, corpus, scenes);
+    
+    Set<String> intersection = new HashSet<String>(poors); //finding the intersection between them
+    poors.retainAll(yoricks);
+
+    for(String scene : poors) {
+      
+    }
+    
+    return newScenes;
+  }
+  
+  public static void writeCollectionToFile(File f, Map<String, List<Posting>> map) throws IOException {
     FileWriter fw = new FileWriter(f);
     BufferedWriter bw = new BufferedWriter(fw);
     
@@ -134,15 +257,47 @@ public class Main {
     
   }
   
+  public static void writeListToFile(File f, List<String> scenes) throws IOException {
+    FileWriter fw = new FileWriter(f);
+    BufferedWriter bw = new BufferedWriter(fw);
+    
+    for(String scene : scenes) {
+      bw.write(scene + "\n");
+    }
+    
+    bw.close();
+  }
+  
+  public static void writeSetToFile(File f, Set<String> scenes) throws IOException {
+    FileWriter fw = new FileWriter(f);
+    BufferedWriter bw = new BufferedWriter(fw);
+    
+    for(String scene : scenes) {
+      bw.write(scene + "\n");
+    }
+    
+    bw.close();
+  }
+  
+  public static List<String> sortSet(Set<String> set) {
+    List<String> list = new ArrayList<String>(set);
+    Collections.sort(list);
+    return list;
+  }
+  
   public static void main(String[] args) throws Exception {
     
     Map<String, List<Posting>> map = new HashMap<String, List<Posting>>();
     
     JSONArray corpus = getCorpus(new File("shakespeare-scenes.json"));
 
-    List<String> docs = new ArrayList<String>();
+    List<String> scenes = new ArrayList<String>();
+    List<String> plays = new ArrayList<String>();
     
-    map = indexJsons(corpus, docs);
+    map = indexJsons(corpus, scenes, plays);
+    
+//    //Testing
+//    writeListToFile(new File("plays.txt"), plays);
     
     /*
       Terms
@@ -158,9 +313,18 @@ public class Main {
      */
     
     //Terms0
+    writeListToFile(new File("terms0.txt"), sortSet(term0(map, corpus, scenes)));
     
+    //Terms1
+    writeListToFile(new File("terms1.txt"), sortSet(term1(map, corpus, scenes)));
     
-    writeToFile(new File("map.txt"), map);
+    //Terms2
+    writeListToFile(new File("terms2.txt"), sortSet(term2(map, corpus)));
+    
+    //Terms3
+    writeListToFile(new File("terms3.txt"), sortSet(term3(map, corpus)));
+    
+    writeCollectionToFile(new File("map.txt"), map);
     
 //    for(Map.Entry<String, List<Posting>> e : map.entrySet()) {
 //      System.out.print(e.getKey());
