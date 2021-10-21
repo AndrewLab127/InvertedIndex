@@ -167,6 +167,21 @@ public class Main {
     return newPlays;
   }
   
+  public static JSONObject findJSONByScene(String scene, JSONArray corpus) {
+    Iterator<JSONObject> iter = corpus.iterator();
+    JSONObject doc = null;
+    
+    while(iter.hasNext()) {
+      doc = iter.next();
+      
+      if(doc.get("sceneId").toString().equals(scene)) {
+        return doc;
+      }
+    }
+    
+    return null; //if doc isn't found;
+  }
+  
   //terms0.txt Find scene(s) where the words thee or thou are used more frequently than the word you
   public static Set<String> term0(Map<String, List<Posting>> map, JSONArray corpus, List<String> scenes) {
     //List<String> newScenes = new ArrayList<String>();
@@ -232,10 +247,13 @@ public class Main {
     Set<String> yoricks = findScenesByTerm("yorick", map, corpus, scenes);
     
     Set<String> intersection = new HashSet<String>(poors); //finding the intersection between them
-    poors.retainAll(yoricks);
+    intersection.retainAll(yoricks);
 
-    for(String scene : poors) {
-      
+    for(String scene : intersection) {
+      JSONObject doc = findJSONByScene(scene, corpus);
+      for(Posting p : map.get("poor")) {
+        
+      }
     }
     
     return newScenes;
